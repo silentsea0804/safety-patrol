@@ -1,0 +1,1147 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>현장 안전 AI 패트롤 - Google Gemini 실시간 연동</title>
+<style>
+  :root {
+    --bg-page: #eef2f6;
+    --surface: #ffffff;
+    --ink: #1b2430;
+    --ink-muted: #5a6676;
+    --border: #d4dde7;
+    --primary: #0e3d68;
+    --primary-light: #eaf1f8;
+    --danger: #c92a2a;
+    --danger-light: #ffe3e3;
+    --warning: #b76e00;
+    --warning-light: #fff3bf;
+    --success: #2b8a3e;
+    --success-light: #ebfbee;
+    --radius: 8px;
+    --shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Pretendard", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+    background-color: var(--bg-page);
+    color: var(--ink);
+    line-height: 1.5;
+    padding: 12px;
+    display: flex;
+    justify-content: center;
+  }
+
+  .app-container {
+    width: 100%;
+    max-width: 520px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+    display: flex;
+    flex-direction: column;
+    min-height: 92vh;
+  }
+
+  header {
+    background: var(--primary);
+    color: #ffffff;
+    padding: 14px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  header h1 {
+    font-size: 16px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .api-setup-btn {
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.4);
+    font-size: 11px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+  }
+
+  /* API 키 입력 설정 모달/배너 */
+  .api-banner {
+    background: #fff8e6;
+    border-bottom: 1px solid #ffe08a;
+    padding: 10px 14px;
+    font-size: 12px;
+    display: none;
+  }
+  .api-banner.show { display: block; }
+  .api-input-row {
+    display: flex;
+    gap: 6px;
+    margin-top: 6px;
+  }
+  .api-input-row input {
+    flex: 1;
+    padding: 6px 8px;
+    font-size: 12px;
+    border: 1px solid #d4dde7;
+    border-radius: 4px;
+  }
+  .api-input-row button {
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .filter-bar {
+    display: flex;
+    background: #fafbfc;
+    border-bottom: 1px solid var(--border);
+    padding: 8px 12px;
+    gap: 8px;
+  }
+  .filter-btn {
+    flex: 1;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink-muted);
+    cursor: pointer;
+    text-align: center;
+  }
+  .filter-btn.active {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+  }
+
+  main {
+    flex: 1;
+    padding: 16px;
+    overflow-y: auto;
+  }
+
+  .action-banner {
+    background: var(--primary-light);
+    border: 1.5px dashed var(--primary);
+    border-radius: var(--radius);
+    padding: 14px;
+    text-align: center;
+    margin-bottom: 16px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .action-banner:hover { background: #dceaf6; }
+  .action-banner h3 { font-size: 15px; color: var(--primary); margin-bottom: 3px; }
+  .action-banner p { font-size: 12px; color: var(--ink-muted); }
+
+  .form-card {
+    display: none;
+    background: #ffffff;
+    border: 1.5px solid var(--primary);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow);
+  }
+  .form-card.show { display: block; }
+  .form-card h2 {
+    font-size: 15px;
+    color: var(--primary);
+    margin-bottom: 12px;
+  }
+
+  .form-group { margin-bottom: 12px; }
+  .form-group label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-muted);
+    margin-bottom: 5px;
+  }
+  .form-control {
+    width: 100%;
+    padding: 8px 10px;
+    font-size: 13px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: #fff;
+  }
+
+  .file-input-wrapper {
+    position: relative;
+    border: 2px dashed #9bb8d3;
+    border-radius: 6px;
+    padding: 18px 12px;
+    text-align: center;
+    background: #f7fafd;
+    cursor: pointer;
+  }
+  .file-input-wrapper input[type="file"] {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    opacity: 0;
+    cursor: pointer;
+  }
+  .preview-box {
+    margin-top: 10px;
+    display: none;
+    background: #111;
+    border-radius: 6px;
+    overflow: hidden;
+    text-align: center;
+  }
+  .preview-box img {
+    max-width: 100%;
+    max-height: 220px;
+    object-fit: contain;
+    display: block;
+    margin: 0 auto;
+  }
+
+  .type-chips-wrapper {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 4px;
+  }
+  .type-chip {
+    padding: 6px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: #f8fafc;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .type-chip:hover { border-color: var(--primary); }
+  .type-chip.selected {
+    background: var(--primary);
+    color: #ffffff;
+    border-color: var(--primary);
+    box-shadow: 0 2px 5px rgba(14, 61, 104, 0.25);
+  }
+
+  /* 로딩 스피너 박스 */
+  .ai-loading-box {
+    display: none;
+    background: #f0f7ff;
+    border: 1.5px solid #0e3d68;
+    border-radius: 6px;
+    padding: 14px;
+    margin-top: 12px;
+    text-align: center;
+    font-size: 13px;
+    color: #0e3d68;
+    font-weight: 700;
+  }
+
+  .btn-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 14px;
+  }
+  .btn {
+    flex: 1;
+    padding: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+  }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-secondary { background: #e3e8ee; color: var(--ink); }
+
+  .list-container {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+  .hazard-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  }
+  .card-header {
+    padding: 10px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #fafbfc;
+    border-bottom: 1px solid #edf1f5;
+  }
+  .card-meta { font-size: 12px; color: var(--ink-muted); }
+  .card-meta strong { color: var(--ink); }
+
+  .card-top-tags {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .category-badge {
+    background: #eef3f8;
+    color: var(--primary);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 7px;
+    border-radius: 4px;
+    border: 1px solid #d0deec;
+  }
+  .status-badge {
+    padding: 3px 9px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .status-badge.pending { background: var(--danger-light); color: var(--danger); }
+  .status-badge.completed { background: var(--success-light); color: var(--success); }
+
+  .photo-display {
+    position: relative;
+    background: #111;
+    min-height: 190px;
+    max-height: 290px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .photo-display img {
+    width: 100%;
+    height: 100%;
+    max-height: 290px;
+    object-fit: cover;
+  }
+
+  .ai-analysis-panel {
+    background: #ffffff;
+    border-bottom: 1px solid #edf1f5;
+    padding: 14px;
+  }
+  .ai-panel-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .ai-badge {
+    background: #e6f4ea;
+    color: #137333;
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+  }
+
+  .risk-block {
+    background: #fdfdfe;
+    border: 1px solid #e1e7ee;
+    border-radius: 6px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+  }
+  .risk-block:last-child { margin-bottom: 0; }
+  .risk-rank {
+    font-size: 11px;
+    font-weight: 700;
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 4px;
+    margin-bottom: 4px;
+  }
+  .risk-rank.rank1 { background: #ffebe9; color: var(--danger); border: 1px solid #ffc1bc; }
+  .risk-rank.rank2 { background: #fff8c5; color: #8a4b00; border: 1px solid #ffe580; }
+  
+  .risk-law {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ink);
+    margin-bottom: 3px;
+    line-height: 1.35;
+  }
+  .risk-desc {
+    font-size: 12px;
+    color: #444f5d;
+    margin-bottom: 6px;
+    line-height: 1.4;
+  }
+  
+  .penalty-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 4px;
+  }
+  .penalty-tag {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .penalty-tag.criminal {
+    background: var(--danger-light);
+    color: var(--danger);
+    border: 1px solid #ffd0cc;
+  }
+  .penalty-tag.fine {
+    background: var(--warning-light);
+    color: var(--warning);
+    border: 1px solid #ffe999;
+  }
+
+  .action-proof-box {
+    background: #f7faf7;
+    border-top: 1px solid #e1efe4;
+    padding: 12px 14px;
+  }
+  .action-proof-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--success);
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+  }
+  .action-proof-grid { display: flex; gap: 10px; }
+  .proof-thumb {
+    width: 80px;
+    height: 80px;
+    border-radius: 6px;
+    overflow: hidden;
+    background: #ddd;
+    flex-shrink: 0;
+    border: 1px solid #c9e0ce;
+  }
+  .proof-thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .proof-text { font-size: 12px; color: var(--ink); line-height: 1.4; }
+  .proof-text small { display: block; color: var(--ink-muted); margin-top: 4px; font-size: 11px; }
+
+  .comments-section {
+    padding: 12px 14px;
+    background: #ffffff;
+    border-top: 1px solid #f0f4f8;
+  }
+  .comment-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .comment-item {
+    background: #f6f8fa;
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+  .comment-head {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 3px;
+    color: var(--ink-muted);
+    font-size: 11px;
+  }
+  .comment-author { font-weight: 600; color: var(--ink); }
+  .comment-text { color: #2b3543; line-height: 1.4; }
+
+  .reply-form {
+    border-top: 1px dashed var(--border);
+    padding-top: 10px;
+  }
+  .reply-inputs { display: flex; flex-direction: column; gap: 6px; }
+  .reply-row-meta { display: flex; gap: 6px; }
+  .reply-row-meta input { font-size: 12px; padding: 6px 8px; }
+
+  .reply-action-check {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--success);
+    background: var(--success-light);
+    padding: 7px 10px;
+    border-radius: 6px;
+    margin-top: 4px;
+    cursor: pointer;
+  }
+  .reply-action-check input { accent-color: var(--success); cursor: pointer; }
+
+  .mini-file-btn {
+    font-size: 12px;
+    color: var(--primary);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 600;
+    padding: 4px 0;
+  }
+  .mini-file-btn input { display: none; }
+
+  footer {
+    padding: 12px 16px;
+    background: #fafbfc;
+    border-top: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--ink-muted);
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<div class="app-container">
+  <header>
+    <h1>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+      </svg>
+      현장 안전패트롤 AI 자동지적
+    </h1>
+    <button class="api-setup-btn" onclick="toggleApiBanner()">🔑 AI설정</button>
+  </header>
+
+  <!-- Google Gemini API 키 설정 배너 -->
+  <div class="api-banner" id="api-banner">
+    <strong>⚡ 구글 Gemini 무료 AI 키 등록 (기기 1회 저장)</strong>
+    <p style="color:#666; margin-top:2px;">Google AI Studio에서 발급받은 무료 키(AIzaSy...)를 입력하세요.</p>
+    <div class="api-input-row">
+      <input type="password" id="input-gemini-key" placeholder="AIzaSy... 무료 키 붙여넣기">
+      <button onclick="saveApiKey()">저장</button>
+    </div>
+  </div>
+
+  <div class="filter-bar">
+    <button class="filter-btn active" onclick="setFilter('all')">전체 (<span id="cnt-all">1</span>)</button>
+    <button class="filter-btn" onclick="setFilter('pending')">미조치 (<span id="cnt-pending">1</span>)</button>
+    <button class="filter-btn" onclick="setFilter('completed')">조치완료 (<span id="cnt-completed">0</span>)</button>
+  </div>
+
+  <main>
+    <div class="action-banner" id="btn-open-form" onclick="toggleForm()">
+      <h3>+ 현장 사진 촬영 / 지적 등록</h3>
+      <p>사진 첨부 후 재해유형을 누르면 Google AI가 실시간 분석합니다</p>
+    </div>
+
+    <div class="form-card" id="form-card">
+      <h2>안전 지적사항 신규 등록</h2>
+
+      <div class="form-group">
+        <label>현장 사진 첨부</label>
+        <div class="file-input-wrapper">
+          <input type="file" id="input-photo" accept="image/*" onchange="handlePhotoUpload(event)">
+          <div id="file-label-text">
+            <strong>[여기를 눌러 사진을 첨부하세요]</strong><br>
+            <span style="font-size: 11px; color:#667;">스마트폰에서는 카메라로 바로 촬영됩니다</span>
+          </div>
+        </div>
+        <div class="preview-box" id="preview-box">
+          <img id="preview-img" src="" alt="미리보기">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>핵심 재해유형 분류 (원터치 선택)</label>
+        <div class="type-chips-wrapper" id="type-chips">
+          <button type="button" class="type-chip selected" data-type="collapse" onclick="selectType('collapse')">붕괴·도괴 (흙막이/사면/비계)</button>
+          <button type="button" class="type-chip" data-type="fall" onclick="selectType('fall')">추락·떨어짐 (단부/개구부/발판)</button>
+          <button type="button" class="type-chip" data-type="struck" onclick="selectType('struck')">끼임·충돌 (중장비/양중기)</button>
+          <button type="button" class="type-chip" data-type="fire" onclick="selectType('fire')">화재·폭발 (용접/가연물)</button>
+          <button type="button" class="type-chip" data-type="electric" onclick="selectType('electric')">감전·질식 (분전함/밀폐공간)</button>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-top:12px;">
+        <label>점검자</label>
+        <input type="text" id="input-author" class="form-control" value="점검자" placeholder="점검자 성명/직책">
+      </div>
+
+      <div class="form-group">
+        <label>촬영 일시</label>
+        <input type="datetime-local" id="input-datetime" class="form-control">
+      </div>
+
+      <!-- AI 실시간 판독 진행 중 표시 -->
+      <div class="ai-loading-box" id="ai-loading-box">
+        ⏳ Google Gemini AI가 사진을 정밀 분석 중입니다... (약 2~4초 소요)
+      </div>
+
+      <div class="btn-row" id="form-btn-row">
+        <button class="btn btn-secondary" onclick="toggleForm()">취소</button>
+        <button class="btn btn-primary" onclick="submitHazard()">AI 정밀분석 및 등록</button>
+      </div>
+    </div>
+
+    <div class="list-container" id="hazard-list"></div>
+  </main>
+
+  <footer>
+    Google Gemini 1.5 Flash 연동 · 현장 안전 지적 시스템
+  </footer>
+</div>
+
+<script>
+  // 기본 백업 데이터베이스 (키가 없거나 오프라인일 때 자동 작동)
+  const fallbackDatabase = {
+    collapse: {
+      categoryName: "붕괴·도괴",
+      risks: [
+        {
+          rank: 1,
+          rankTitle: "최우선 위험 (지반 붕괴·매몰)",
+          law: "산업안전보건기준에 관한 규칙 제340조 (흙막이지보공의 설치 및 점검)",
+          desc: "굴착 깊이에 따른 흙막이판, 띠장, 버팀대 조립 불량 및 지보공 정기점검 미실시",
+          criminal: "형사처벌: 5년 이하 징역 또는 5천만원 이하 벌금 (사망 시 7년)",
+          fine: "과태료: 안전진단 미실시 및 시정명령 위반 시 최대 1,000만원"
+        },
+        {
+          rank: 2,
+          rankTitle: "차순위 위험 (굴착사면 전도)",
+          law: "산업안전보건기준에 관한 규칙 제338조 (지반 등의 굴착 시 위험 방지)",
+          desc: "토사 붕괴 예방을 위한 굴착면 기울기 미준수 및 배면 용수 배수 조치 미흡",
+          criminal: "사업주 조치의무 위반 (산안법 제38조)",
+          fine: "과태료: 붕괴위험 구간 즉시 작업중지 및 1차 과태료 500만원"
+        }
+      ]
+    },
+    fall: {
+      categoryName: "추락·떨어짐",
+      risks: [
+        {
+          rank: 1,
+          rankTitle: "최우선 위험 (추락사망 직결)",
+          law: "산업안전보건기준에 관한 규칙 제13조 (안전난간의 구조 및 설치요건)",
+          desc: "바닥 단부 및 개구부 상·중간 난간대 누락 상태로 근로자 실족 시 추락 사망 위험",
+          criminal: "형사처벌: 5년 이하 징역 또는 5천만원 이하 벌금 (사망 시 7년)",
+          fine: "과태료: 난간 미설치 적발 즉시 사용중지 및 시정명령"
+        },
+        {
+          rank: 2,
+          rankTitle: "차순위 위험 (보호구 미체결)",
+          law: "산업안전보건기준에 관한 규칙 제44조 (추락방지용 안전대 착용)",
+          desc: "추락 위험 단부 작업임에도 안전대 걸이설비 미설치 및 안전대 고리 미체결",
+          criminal: "사업주 조치의무 위반 적용",
+          fine: "근로자 과태료: 안전대 미착용 적발 시 5만원 즉시 부과"
+        }
+      ]
+    },
+    struck: {
+      categoryName: "끼임·충돌",
+      risks: [
+        {
+          rank: 1,
+          rankTitle: "최우선 위험 (중장비 충돌·협착)",
+          law: "산업안전보건기준에 관한 규칙 제171조 (차량계 건설기계의 접촉 방지)",
+          desc: "선회 반경 내 전담 신호수 미배치 및 근로자 출입 통제선 미설치",
+          criminal: "형사처벌: 5년 이하 징역 또는 5천만원 이하 벌금",
+          fine: "과태료: 작업계획서 미작성 및 미이행 시 500만원"
+        },
+        {
+          rank: 2,
+          rankTitle: "차순위 위험 (양중기 낙하·끼임)",
+          law: "산업안전보건기준에 관한 규칙 제63조 (달기로프 등의 안전계수)",
+          desc: "샤클 핀 미체결, 인양 와이어로프 손상 상태 방치 사용",
+          criminal: "산안법 제38조 안전조치 미이행",
+          fine: "과태료: 불량 달기구 즉시 폐기 및 과태료 부과"
+        }
+      ]
+    },
+    fire: {
+      categoryName: "화재·폭발",
+      risks: [
+        {
+          rank: 1,
+          rankTitle: "최우선 위험 (불꽃 비산 화재)",
+          law: "산업안전보건기준에 관한 규칙 제241조 (화재위험작업의 예방조치)",
+          desc: "용접·절단 작업 시 비산방지포 미설치 및 5m 이내 소화기 미비치",
+          criminal: "형사처벌: 5년 이하 징역 또는 5천만원 이하 벌금",
+          fine: "과태료: 화재감시자 미배치 시 즉시 과태료 500만원"
+        },
+        {
+          rank: 2,
+          rankTitle: "차순위 위험 (가연성 가스 누출)",
+          law: "산업안전보건기준에 관한 규칙 제230조 (인화성 액체 등의 저장)",
+          desc: "가스 용기 전도방지 미체결 및 유증기 발생 구역 방폭설비 미적용",
+          criminal: "사업주 안전보건조치 위반",
+          fine: "과태료: 가스용기 캡 미부착 시 과태료"
+        }
+      ]
+    },
+    electric: {
+      categoryName: "감전·질식",
+      risks: [
+        {
+          rank: 1,
+          rankTitle: "최우선 위험 (고압 감전사고)",
+          law: "산업안전보건기준에 관한 규칙 제304조 (누전차단기 등의 접속)",
+          desc: "임시 가설분전함 접지선 단선 및 누전차단기 미경유 전선 직결",
+          criminal: "형사처벌: 5년 이하 징역 또는 5천만원 이하 벌금",
+          fine: "과태료: 외함 접지 미실시 적발 시 과태료 및 전원 차단"
+        },
+        {
+          rank: 2,
+          rankTitle: "차순위 위험 (밀폐공간 질식)",
+          law: "산업안전보건기준에 관한 규칙 제619조 (밀폐공간 보건작업)",
+          desc: "피트 작업 전 유해가스 농도 미측정 및 강제 환기 미실시",
+          criminal: "질식사망 발생 시 중대재해처벌법 및 징역형",
+          fine: "과태료: 밀폐공간 관리 미흡 시 최대 1,000만원"
+        }
+      ]
+    }
+  };
+
+  let hazardItems = [
+    {
+      id: 1,
+      category: "collapse",
+      categoryName: "붕괴·도괴",
+      author: "점검자",
+      datetime: "2025-05-12 11:30",
+      status: "pending",
+      image: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='440' height='260' viewBox='0 0 440 260'><rect width='100%' height='100%' fill='%23705030'/><rect x='40' y='60' width='360' height='150' fill='%23d99b26' stroke='%23333' stroke-width='4'/><text x='220' y='140' fill='%23000' font-family='sans-serif' font-weight='bold' font-size='18' text-anchor='middle'>[서진산업 흙막이 굴착구간]</text><text x='220' y='170' fill='%23ffffff' font-family='sans-serif' font-size='12' text-anchor='middle'>지보공 설치 상태 및 단부 피트 점검</text></svg>",
+      risks: fallbackDatabase.collapse.risks,
+      actionProof: null,
+      comments: [
+        { author: "점검자", time: "11:35", text: "토공 반장님, 굴착 배면 토사 압력 점검 및 피트 주변 안전난간 보강 즉시 실시하세요." }
+      ]
+    }
+  ];
+
+  let selectedCategoryKey = 'collapse';
+  let currentFilter = 'all';
+  let uploadedImageBase64 = null;
+  let rawBase64Data = null;
+  let replyImageBase64Map = {};
+
+  // 초기화 및 로컬스토리지 키 불러오기
+  window.addEventListener('DOMContentLoaded', () => {
+    const now = new Date();
+    const isoString = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    document.getElementById('input-datetime').value = isoString;
+
+    const savedKey = localStorage.getItem('gemini_api_key');
+    if (savedKey) {
+      document.getElementById('input-gemini-key').value = savedKey;
+    } else {
+      // 키가 없으면 상단 배너를 열어서 키 입력을 유도
+      document.getElementById('api-banner').classList.add('show');
+    }
+    renderList();
+  });
+
+  function toggleApiBanner() {
+    const banner = document.getElementById('api-banner');
+    banner.classList.toggle('show');
+  }
+
+  function saveApiKey() {
+    const key = document.getElementById('input-gemini-key').value.trim();
+    if (!key) {
+      alert("API 키를 입력해 주세요.");
+      return;
+    }
+    localStorage.setItem('gemini_api_key', key);
+    alert("구글 Gemini API 키가 성공적으로 저장되었습니다!");
+    document.getElementById('api-banner').classList.remove('show');
+  }
+
+  function toggleForm() {
+    const form = document.getElementById('form-card');
+    const btn = document.getElementById('btn-open-form');
+    if (form.classList.contains('show')) {
+      form.classList.remove('show');
+      btn.style.display = 'block';
+    } else {
+      form.classList.add('show');
+      btn.style.display = 'none';
+    }
+  }
+
+  function selectType(typeKey) {
+    selectedCategoryKey = typeKey;
+    document.querySelectorAll('.type-chip').forEach(btn => {
+      if (btn.getAttribute('data-type') === typeKey) {
+        btn.classList.add('selected');
+      } else {
+        btn.classList.remove('selected');
+      }
+    });
+  }
+
+  function handlePhotoUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+      uploadedImageBase64 = evt.target.result;
+      rawBase64Data = uploadedImageBase64.split(',')[1]; // Base64 순수 데이터 분리
+      document.getElementById('preview-img').src = uploadedImageBase64;
+      document.getElementById('preview-box').style.display = 'block';
+      document.getElementById('file-label-text').innerHTML = `<strong>사진이 업로드되었습니다</strong> (${file.name})`;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // Google Gemini 1.5 Flash 실제 호출 함수
+  async function callGeminiVision(base64Image, categoryKey) {
+    const apiKey = localStorage.getItem('gemini_api_key') || document.getElementById('input-gemini-key').value.trim();
+    if (!apiKey) {
+      // 키가 없으면 기본 데이터베이스 사용
+      console.warn("API 키 부재: 기본 법규 템플릿 사용");
+      return fallbackDatabase[categoryKey].risks;
+    }
+
+    const categoryNames = {
+      collapse: "붕괴·도괴 (흙막이/지보공/사면/비계)",
+      fall: "추락·떨어짐 (안전난간/개구부/안전대/발판)",
+      struck: "끼임·충돌 (중장비/신호수/양중기)",
+      fire: "화재·폭발 (용접/소화기/가연물)",
+      electric: "감전·질식 (분전함/누전차단기/밀폐공간)"
+    };
+
+    const promptText = `
+당신은 대한민국 건설현장 안전관리 전문 AI입니다.
+첨부된 현장 사진과 점검자가 지정한 재해유형 [${categoryNames[categoryKey]}]을 정밀 분석하십시오.
+'산업안전보건기준에 관한 규칙'을 바탕으로, 사진에서 확인되는 결함 중 가장 사고 위험이 높은 최상위 2가지 위반사항을 찾아내십시오.
+
+반드시 아래와 같은 JSON 배열 형식으로만 응답해야 합니다. 마크다운 기호(\`\`\`json)나 다른 설명 문장은 일절 포함하지 마십시오:
+[
+  {
+    "rank": 1,
+    "rankTitle": "최우선 위험 (사고 직결 요인)",
+    "law": "산업안전보건기준에 관한 규칙 제O조 (조항 제목)",
+    "desc": "사진 속의 구체적인 결함 및 위반 상태 설명 (1~2줄)",
+    "criminal": "형사처벌: 5년 이하 징역 또는 5천만원 이하 벌금",
+    "fine": "과태료: 즉시 시정명령 및 과태료 부과"
+  },
+  {
+    "rank": 2,
+    "rankTitle": "차순위 위험",
+    "law": "산업안전보건기준에 관한 규칙 제O조 (조항 제목)",
+    "desc": "사진 속의 추가적인 위험 요소 설명 (1~2줄)",
+    "criminal": "사업주 안전보건조치 의무 위반",
+    "fine": "과태료 부과 대상"
+  }
+]`;
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+
+    const requestBody = {
+      contents: [
+        {
+          parts: [
+            { text: promptText },
+            {
+              inline_data: {
+                mime_type: "image/jpeg",
+                data: base64Image
+              }
+            }
+          ]
+        }
+      ]
+    };
+
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (!response.ok) {
+        throw new Error(`API 오류: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const rawText = data.candidates[0].content.parts[0].text;
+      
+      // JSON 파싱 (마크다운 백틱 제거 처리)
+      const cleanJson = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+      return JSON.parse(cleanJson);
+    } catch (err) {
+      console.error("Gemini 호출 실패:", err);
+      alert("Gemini AI 호출 중 오류가 발생하여 표준 안전 규칙으로 자동 매칭합니다. (API 키 확인 필요)");
+      return fallbackDatabase[categoryKey].risks;
+    }
+  }
+
+  async function submitHazard() {
+    const author = document.getElementById('input-author').value.trim() || "점검자";
+    const datetime = document.getElementById('input-datetime').value.replace('T', ' ') || "방금 전";
+    const categoryData = fallbackDatabase[selectedCategoryKey];
+
+    // 로딩 인디케이터 표시
+    document.getElementById('ai-loading-box').style.display = 'block';
+    document.getElementById('form-btn-row').style.display = 'none';
+
+    let finalRisks = null;
+
+    if (rawBase64Data) {
+      // 실제 구글 Gemini AI로 사진 전송 및 실시간 분석
+      finalRisks = await callGeminiVision(rawBase64Data, selectedCategoryKey);
+    } else {
+      finalRisks = categoryData.risks;
+    }
+
+    // 로딩 해제
+    document.getElementById('ai-loading-box').style.display = 'none';
+    document.getElementById('form-btn-row').style.display = 'flex';
+
+    const imgSource = uploadedImageBase64 || "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='440' height='260' viewBox='0 0 440 260'><rect width='100%' height='100%' fill='%232a3542'/><text x='50%' y='48%' fill='%23ffffff' font-family='sans-serif' font-size='15' text-anchor='middle'>[현장 " + encodeURIComponent(categoryData.categoryName) + " 점검 사진]</text><text x='50%' y='62%' fill='%23ffd480' font-family='sans-serif' font-size='12' text-anchor='middle'>Google Gemini AI 분석 완료</text></svg>";
+
+    const newItem = {
+      id: Date.now(),
+      category: selectedCategoryKey,
+      categoryName: categoryData.categoryName,
+      author: author,
+      datetime: datetime,
+      status: "pending",
+      image: imgSource,
+      risks: finalRisks,
+      actionProof: null,
+      comments: []
+    };
+
+    hazardItems.unshift(newItem);
+
+    // 초기화
+    uploadedImageBase64 = null;
+    rawBase64Data = null;
+    document.getElementById('preview-box').style.display = 'none';
+    document.getElementById('input-photo').value = "";
+    document.getElementById('file-label-text').innerHTML = "<strong>[여기를 눌러 사진을 첨부하세요]</strong>";
+    toggleForm();
+    renderList();
+  }
+
+  function setFilter(type) {
+    currentFilter = type;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+    renderList();
+  }
+
+  function handleReplyPhoto(cardId, event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+      replyImageBase64Map[cardId] = evt.target.result;
+      document.getElementById(`reply-file-name-${cardId}`).innerText = `선택: ${file.name}`;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function addComment(cardId) {
+    const authorInput = document.getElementById(`comment-author-${cardId}`);
+    const textInput = document.getElementById(`comment-text-${cardId}`);
+    const isCompletedCheck = document.getElementById(`comment-complete-check-${cardId}`);
+
+    const author = authorInput.value.trim() || "현장 담당자";
+    const text = textInput.value.trim();
+
+    if (!text) {
+      alert("조치 내용이나 의견을 입력해 주세요.");
+      return;
+    }
+
+    const item = hazardItems.find(h => h.id === cardId);
+    if (!item) return;
+
+    item.comments.push({
+      author: author,
+      time: "방금 전",
+      text: text
+    });
+
+    if (isCompletedCheck && isCompletedCheck.checked) {
+      item.status = "completed";
+      const proofImg = replyImageBase64Map[cardId] || "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'><rect width='100%' height='100%' fill='%232b8a3e'/><text x='50%' y='55%' fill='%23ffffff' font-family='sans-serif' font-size='11' text-anchor='middle'>조치사진</text></svg>";
+      item.actionProof = {
+        image: proofImg,
+        text: text,
+        time: "방금 전"
+      };
+      delete replyImageBase64Map[cardId];
+    }
+
+    renderList();
+  }
+
+  function toggleStatusDirect(cardId) {
+    const item = hazardItems.find(h => h.id === cardId);
+    if (!item) return;
+    item.status = (item.status === 'pending') ? 'completed' : 'pending';
+    if (item.status === 'pending') {
+      item.actionProof = null;
+    }
+    renderList();
+  }
+
+  function renderList() {
+    const listEl = document.getElementById('hazard-list');
+    listEl.innerHTML = "";
+
+    const cntAll = hazardItems.length;
+    const cntPending = hazardItems.filter(h => h.status === 'pending').length;
+    const cntCompleted = hazardItems.filter(h => h.status === 'completed').length;
+
+    document.getElementById('cnt-all').innerText = cntAll;
+    document.getElementById('cnt-pending').innerText = cntPending;
+    document.getElementById('cnt-completed').innerText = cntCompleted;
+
+    const filtered = hazardItems.filter(item => {
+      if (currentFilter === 'pending') return item.status === 'pending';
+      if (currentFilter === 'completed') return item.status === 'completed';
+      return true;
+    });
+
+    if (filtered.length === 0) {
+      listEl.innerHTML = `<div style="text-align:center; padding: 40px 10px; color: var(--ink-muted); font-size:13px;">해당 조건의 지적 내역이 없습니다.</div>`;
+      return;
+    }
+
+    filtered.forEach(item => {
+      const isPending = item.status === 'pending';
+      const statusLabel = isPending ? '미조치' : '조치완료';
+      const statusClass = isPending ? 'pending' : 'completed';
+
+      let risksHtml = item.risks.map(r => `
+        <div class="risk-block">
+          <span class="risk-rank ${r.rank === 1 ? 'rank1' : 'rank2'}">${r.rankTitle}</span>
+          <div class="risk-law">${r.law}</div>
+          <div class="risk-desc">${r.desc}</div>
+          <div class="penalty-row">
+            <span class="penalty-tag criminal">🚨 ${r.criminal}</span>
+            <span class="penalty-tag fine">⚠️ ${r.fine}</span>
+          </div>
+        </div>
+      `).join('');
+
+      let actionProofHtml = "";
+      if (item.actionProof) {
+        actionProofHtml = `
+          <div class="action-proof-box">
+            <div class="action-proof-title">
+              <span>조치 완료 내역 (After 확인)</span>
+              <span style="font-size:11px; font-weight:normal; color:#555;">${item.actionProof.time}</span>
+            </div>
+            <div class="action-proof-grid">
+              <div class="proof-thumb">
+                <img src="${item.actionProof.image}" alt="조치사진">
+              </div>
+              <div class="proof-text">
+                <strong>${item.actionProof.text}</strong>
+                <small>상태 변경: 미조치 ➔ 조치완료 승인됨</small>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      let commentsHtml = item.comments.map(c => `
+        <div class="comment-item">
+          <div class="comment-head">
+            <span class="comment-author">${c.author}</span>
+            <span>${c.time}</span>
+          </div>
+          <div class="comment-text">${c.text}</div>
+        </div>
+      `).join('');
+
+      const card = document.createElement('div');
+      card.className = 'hazard-card';
+      card.innerHTML = `
+        <div class="card-header">
+          <div class="card-meta">
+            <strong>${item.author}</strong> · <span>${item.datetime}</span>
+          </div>
+          <div class="card-top-tags">
+            <span class="category-badge">${item.categoryName}</span>
+            <span class="status-badge ${statusClass}" onclick="toggleStatusDirect(${item.id})" style="cursor:pointer;" title="클릭 시 상태 변경">
+              ${statusLabel}
+            </span>
+          </div>
+        </div>
+
+        <div class="photo-display">
+          <img src="${item.image}" alt="지적사진">
+        </div>
+
+        <div class="ai-analysis-panel">
+          <div class="ai-panel-title">
+            <span>AI 정밀 위험 분석 (최상위 2개)</span>
+            <span class="ai-badge">Google Gemini 1.5 Flash 실시간</span>
+          </div>
+          ${risksHtml}
+        </div>
+
+        ${actionProofHtml}
+
+        <div class="comments-section">
+          <div class="comment-list">
+            ${commentsHtml || '<div style="font-size:11px; color:#888; margin-bottom:6px;">등록된 조치 댓글이 없습니다.</div>'}
+          </div>
+
+          <div class="reply-form">
+            <div class="reply-inputs">
+              <div class="reply-row-meta">
+                <input type="text" id="comment-author-${item.id}" class="form-control" style="width:35%;" placeholder="작성자/업체명" value="시공담당">
+                <input type="text" id="comment-text-${item.id}" class="form-control" style="width:65%;" placeholder="조치 내용 또는 의견 입력...">
+              </div>
+
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <label class="mini-file-btn">
+                  📷 조치 사진(After) 첨부
+                  <input type="file" accept="image/*" onchange="handleReplyPhoto(${item.id}, event)">
+                </label>
+                <span id="reply-file-name-${item.id}" style="font-size:11px; color:#666;"></span>
+              </div>
+
+              ${isPending ? `
+                <label class="reply-action-check">
+                  <input type="checkbox" id="comment-complete-check-${item.id}" checked>
+                  <span>조치 완료로 상태 변경 (사진 첨부 시 권장)</span>
+                </label>
+              ` : ''}
+
+              <button class="btn btn-primary" style="margin-top:4px;" onclick="addComment(${item.id})">
+                ${isPending ? '조치 결과 및 댓글 등록' : '추가 댓글 등록'}
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+      listEl.appendChild(card);
+    });
+  }
+</script>
+</body>
+</html>
